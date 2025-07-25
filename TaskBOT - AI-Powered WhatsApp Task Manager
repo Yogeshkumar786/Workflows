@@ -1,0 +1,829 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "name": "WhatsApp Trigger",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        660
+      ],
+      "id": "c6f4948e-d4e4-4189-954a-2880a10124e0",
+      "webhookId": "9f6f40e6-b396-4910-acf1-c29a745da228",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "1gv16LB8GyxfS6LQ",
+          "name": "WhatsApp OAuth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "649974404876366",
+        "recipientPhoneNumber": "+91 9671053119",
+        "textBody": "=Task  \"{{ $json.Task }}\" is marked as {{ $json.Status }} at time {{ $json[\"Completed Time\"] }}",
+        "additionalFields": {}
+      },
+      "name": "Send Confirmation",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        4100,
+        500
+      ],
+      "id": "bc64eae6-0395-4caa-a04e-b3e2835d698a",
+      "webhookId": "fadffefb-ac4d-47fa-a32a-d95e857d9fa1",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "y3gP24YL3mJDyX9d",
+          "name": "WhatsApp account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=From this WhatsApp message, extract task details in this format:\nTask | Due Date | Status | Category | Created Time | Completed Time | Chat ID\n\nWhatsApp Message: {{ $json.messages[0].text.body.trim().toLowerCase() }}\n\noutput format should be\n\"Task: Task_Name  \\nDue Date: Due_Date is calculated according to the current date time, Current Date Time is : {{ $now.toString().split(\"T\")[0] + \" \" + $now.toString().split(\"T\")[1].split(\".\")[0]}}  \\nStatus: Completed or Incompleted \\nCategory: defined from the input  \\nCreated Time: Not specified or currentDateTime  \\nCompleted Time: 'Not specified' if Status is not completed. else Currentdatetime  \\nChat ID: Not specified\"\ndon't write anything else in the output",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        1380,
+        640
+      ],
+      "id": "cf30e36d-3dd4-4bc1-853a-c2c67db94d49",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1380,
+        920
+      ],
+      "id": "6a9ea18b-40a9-45db-989b-2fdec94d1770",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "BgTX3qN5u8ZYoLqY",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "databaseName": "Taskbot"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryMongoDbChat",
+      "typeVersion": 1,
+      "position": [
+        4160,
+        1740
+      ],
+      "id": "061cb108-8757-4a78-9254-5ac245e1914a",
+      "name": "MongoDB Chat Memory",
+      "credentials": {
+        "mongoDb": {
+          "id": "Cat4u1c5NmoBmsPI",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"Task\": \"{{ $json.output.split(\"\\\\n\")[0].split(\":\")[1].trim().toSentenceCase()}}\",\n  \"Due Date\": \"{{ $json.output.split(\"\\\\n\")[1].split(\":\")[1].trim()}}\",\n  \"Status\": \"{{ $json.output.split(\"\\\\n\")[2].split(\":\")[1].trim().toSentenceCase()}}\",\n  \"Category\": \"{{ $json.output.split(\"\\\\n\")[3].split(\":\")[1].trim().toSentenceCase()}}\",\n  \"Created Time\": \"\",\n  \"Completed Time\": \"\",\n  \"Chat ID\": \"\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1740,
+        640
+      ],
+      "id": "0deeedce-c58c-42fd-a8bc-7977fbf3e402",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0b351d0b-db39-46f2-9881-09317313630d",
+              "leftValue": "={{ $json.Status.toString().toLowerCase() }}",
+              "rightValue": "completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1940,
+        640
+      ],
+      "id": "c5dc10ab-4f0a-4880-b8d2-e6eda048d508",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1RsYPU1x15azeaK3Bj3RJjA66Uw77YidsmDbEQbz5FB8",
+          "mode": "list",
+          "cachedResultName": "TaskBot",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1RsYPU1x15azeaK3Bj3RJjA66Uw77YidsmDbEQbz5FB8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Main",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1RsYPU1x15azeaK3Bj3RJjA66Uw77YidsmDbEQbz5FB8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Task": "={{ $json.Task }}",
+            "Due Date": "={{ $json[\"Due Date\"] }}",
+            "Status": "={{ $json.Status }}",
+            "Category": "={{ $json.Category }}",
+            "Created Time": "={{ $json[\"Created Time\"] }}",
+            "Completed Time": "={{ $json[\"Completed Time\"] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Task",
+              "displayName": "Task",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Due Date",
+              "displayName": "Due Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Created Time",
+              "displayName": "Created Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Completed Time",
+              "displayName": "Completed Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Chat ID",
+              "displayName": "Chat ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        2600,
+        940
+      ],
+      "id": "4079262c-a793-4326-a108-270ddbc6a4f2",
+      "name": "Google Sheets",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "y54Bga3PEyAqb0xi",
+          "name": "Google Sheets account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1RsYPU1x15azeaK3Bj3RJjA66Uw77YidsmDbEQbz5FB8",
+          "mode": "list",
+          "cachedResultName": "TaskBot",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1RsYPU1x15azeaK3Bj3RJjA66Uw77YidsmDbEQbz5FB8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Main",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1RsYPU1x15azeaK3Bj3RJjA66Uw77YidsmDbEQbz5FB8/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        2460,
+        620
+      ],
+      "id": "5d6a4852-4e05-490e-bdee-e93d7ee98ca0",
+      "name": "Google Sheets1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "y54Bga3PEyAqb0xi",
+          "name": "Google Sheets account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2780,
+        800
+      ],
+      "id": "5a793127-dafc-4fcf-b410-6c3dccfc5a6e",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "BgTX3qN5u8ZYoLqY",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Below is the list of existing tasks from a sheet:\n{{ \n  $items(\"Google Sheets1\")\n    .filter(item => item.json[\"row_number\"] >= 2)\n    .map(item => \n      item.json[\"Task\"] + \" (Row: \" + item.json[\"row_number\"] + \")\"\n    ).join(\"\\n\") \n}}\n\nIncoming task to be marked as completed:\n\"{{ $node[\"Edit Fields2\"].json[\"Task\"] }}\"\n\nCompare the incoming task with the list and find the most similar one.\n\nIf a match is found, respond in the **exact** format:\nGoogle Sheet Task Name : \"<Matched Task>\", Row_Number : \"<Matched Row Number>\"\n\nIf **no match is found**, respond in the **exact** format:\nGoogle Sheet Task Name : \"No Match\", Row_Number : \"\"\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        2780,
+        620
+      ],
+      "id": "43ff1e38-96fc-4554-9c9e-2401a0bc4a88",
+      "name": "Looking Agent",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"Task\": {{ $json.output.split(\",\")[0].split(\":\")[1] }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3260,
+        620
+      ],
+      "id": "985a8464-572a-4e66-b6b0-cb663013af6e",
+      "name": "Extracting the Task name"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7310adad-d12c-4671-890a-663646f3ee38",
+              "name": "Completed Time",
+              "value": "={{ $now.toString().split(\"T\")[0] + \" \" + $now.toString().split(\"T\")[1].split(\".\")[0]}}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2280,
+        500
+      ],
+      "id": "ca9f63db-6e78-49f8-aff9-7e7b3d210887",
+      "name": "Set Completion Time"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"Task\": \"{{ $node[\"Extracting the Task name\"].json.Task }}\",\n  \"Due Date\": \"{{ $node[\"Set Completion Time\"].json[\"Due Date\"] }}\",\n  \"Status\": \"{{ $node[\"Set Completion Time\"].json.Status }}\",\n  \"Category\": \"{{ $node[\"Set Completion Time\"].json.Category }}\",\n  \"Created Time\": \"{{ $node[\"Set Completion Time\"].json[\"Created Time\"] }}\",\n  \"Completed Time\": \"{{ $node[\"Set Completion Time\"].json[\"Completed Time\"] }}\",\n  \"Chat ID\": \"{{ $node[\"Set Completion Time\"].json[\"Chat ID\"] }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3620,
+        500
+      ],
+      "id": "ddbdeee8-a425-48b4-8983-b3a877985226",
+      "name": "Edit Fields",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1RsYPU1x15azeaK3Bj3RJjA66Uw77YidsmDbEQbz5FB8",
+          "mode": "list",
+          "cachedResultName": "TaskBot",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1RsYPU1x15azeaK3Bj3RJjA66Uw77YidsmDbEQbz5FB8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Main",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1RsYPU1x15azeaK3Bj3RJjA66Uw77YidsmDbEQbz5FB8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Task": "={{ $json.Task }}",
+            "Status": "={{ $json.Status }}",
+            "Completed Time": "={{ $json[\"Completed Time\"] }}"
+          },
+          "matchingColumns": [
+            "Task"
+          ],
+          "schema": [
+            {
+              "id": "Task",
+              "displayName": "Task",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Due Date",
+              "displayName": "Due Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Created Time",
+              "displayName": "Created Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Completed Time",
+              "displayName": "Completed Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Chat ID",
+              "displayName": "Chat ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        3840,
+        500
+      ],
+      "id": "9e435ff7-69e1-4fc6-a78d-83bc0fd1cbf0",
+      "name": "Google Sheets2",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "y54Bga3PEyAqb0xi",
+          "name": "Google Sheets account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7310adad-d12c-4671-890a-663646f3ee38",
+              "name": "Created Time",
+              "value": "={{ $now.toString().split(\"T\")[0] + \" \" + $now.toString().split(\"T\")[1].split(\".\")[0]}}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2260,
+        940
+      ],
+      "id": "00c6ec07-aba9-4943-9dcc-6c8580512e31",
+      "name": "Set Creating Time1",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "649974404876366",
+        "recipientPhoneNumber": "+91 9671053119",
+        "textBody": "=Task  \"{{ $json.Task }}\" of category {{ $json.Category }} has to be done before {{ $json[\"Due Date\"].split(\" \")[0] }} which is created at {{ $json[\"Created Time\"] }}.",
+        "additionalFields": {}
+      },
+      "name": "Send Confirmation1",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        3000,
+        940
+      ],
+      "id": "66b67c86-a05d-4bb1-b4aa-588caf728f04",
+      "webhookId": "fadffefb-ac4d-47fa-a32a-d95e857d9fa1",
+      "executeOnce": true,
+      "credentials": {
+        "whatsAppApi": {
+          "id": "6BajZ5twHP2wcqcX",
+          "name": "WhatsApp account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f79d876b-2f78-448c-9d46-f6b204a3d925",
+              "leftValue": "={{ $json.messages[0].text.body }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        620,
+        660
+      ],
+      "id": "1bc5d61e-9ae1-43f6-b86e-23688912f290",
+      "name": "If"
+    }
+  ],
+  "pinData": {
+    "Looking Agent": [
+      {
+        "json": {
+          "output": "Google Sheet Task Name : \"Finish mentor mentee project\", Row_Number : \"2\""
+        }
+      }
+    ]
+  },
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Confirmation": {
+      "main": [
+        []
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MongoDB Chat Memory": {
+      "ai_memory": [
+        []
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Set Completion Time",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Creating Time1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets1": {
+      "main": [
+        [
+          {
+            "node": "Looking Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Looking Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Looking Agent": {
+      "main": [
+        [
+          {
+            "node": "Extracting the Task name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Completion Time": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Looking Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extracting the Task name": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Creating Time1": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets2": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3b50868f-fca5-479a-bbc9-634eb39205d3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "45c18f9c46e593323e7e0a5d5dab0467f66fd3b21bba84a5fd3a7df6291611ca"
+  },
+  "id": "iqtF5zaXAoYgV997",
+  "tags": []
+}
